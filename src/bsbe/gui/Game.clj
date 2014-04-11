@@ -31,7 +31,7 @@
 
 (defn make-screen
   "creates the screen for displaying stuff"
-  [gui-state]
+  [state]
   (let [stage (atom nil)]
     (proxy [Screen] []
       (resize [w h])
@@ -40,8 +40,8 @@
       (render [delta]
         (clear-screen)
         (reset! stage (Stage.))
-        ; render the game state, which is the atom :state in state
-        (render stage @(:state gui-state))
+        ; render the game state
+        (render stage @state)
         (doto @stage
           (.act delta)
           (.draw)))
@@ -57,4 +57,4 @@
 
 (defn -create [^Game this]
   ; set up screen, input listener
-  (.setScreen this (make-screen (.state this))))
+  (.setScreen this (make-screen (:state (.state this)))))
