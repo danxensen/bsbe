@@ -8,11 +8,6 @@
   ; if the game is finished, process should leave a nil state
   (not (nil? state)))
 
-(defn render
-  "renders the game state"
-  [state]
-  )
-
 (defn run-gui
   "runs the gui application"
   [shared-state shared-inputs window-title window-width window-height]
