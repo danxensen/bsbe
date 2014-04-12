@@ -28,7 +28,7 @@
   [stage state]
   (let [partial-input (Label. (apply str (:partial-input state)) @style)
         input (Label. (:input state) @style)]
-    (.setY input 500)
+    (.setY input 448)
     (.addActor @stage partial-input)
     (.addActor @stage input)))
 
