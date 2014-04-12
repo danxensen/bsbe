@@ -3,7 +3,8 @@
 (defn new-game
   "creates a new game state"
   []
-  0)
+  {:partial-input []
+   :input ""})
 
 (defn get-inputs
   "gets the new inputs"
@@ -14,10 +15,30 @@
     (swap! input-buffer (fn [_] [])) ; clear the buffer
     inputs))
 
+(defn process-inputs
+  "apply the changes to the state for each input received"
+  [state inputs]
+  (if (empty? inputs)
+    state ; no more inputs to process
+    (let [input (first inputs) ; process inputs one at a time
+          partial-input (:partial-input state)
+          new-state ; next state made based on the input
+          (case input
+            ; backspace: take out the last input
+            \backspace (update-in state [:partial-input] (comp vec butlast))
+            ; enter: move partial-input to input so it can be processed
+            \newline (-> state
+                         (assoc-in [:input] (apply str partial-input))
+                         (assoc-in [:partial-input] []))
+            ; otherwise: add input to partial-input
+            (update-in state [:partial-input] conj input))]
+      ; process rest of the inputs
+      (recur new-state (rest inputs)))))
+
 (defn process-state
   "transforms the game state based on previous state and inputs"
   [state inputs]
-  (rand 999999999999))
+  (process-inputs state inputs))
 
 (defn continue?
   "determines if the game should continue running"

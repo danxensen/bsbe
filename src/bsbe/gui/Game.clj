@@ -4,7 +4,7 @@
               :state state
               :init init-game
               :constructors {[clojure.lang.Atom clojure.lang.Atom] []})
-  (:import [com.badlogic.gdx Game Gdx Screen]
+  (:import [com.badlogic.gdx Game Gdx Screen InputProcessor Input$Keys]
            [com.badlogic.gdx.graphics GL20 Color]
            [com.badlogic.gdx.graphics.g2d BitmapFont]
            [com.badlogic.gdx.scenes.scene2d Stage]
@@ -26,8 +26,11 @@
 (defn render
   "renders the game state"
   [stage state]
-  (let [test-text (Label. (str state) @style)]
-    (.addActor @stage test-text)))
+  (let [partial-input (Label. (apply str (:partial-input state)) @style)
+        input (Label. (:input state) @style)]
+    (.setY input 500)
+    (.addActor @stage partial-input)
+    (.addActor @stage input)))
 
 (defn make-screen
   "creates the screen for displaying stuff"
@@ -49,6 +52,24 @@
       (dispose [])
       (resume []))))
 
+(defn make-input-listener
+  "makes a listener for input events"
+  [inputs]
+  (proxy [InputProcessor] []
+    (keyDown [keycode]
+      (when (= keycode Input$Keys/ENTER)
+        (swap! inputs #(conj % \newline)))
+      true)
+    (keyUp [keycode] true)
+    (keyTyped [character]
+      (swap! inputs #(conj % character))
+      true)
+    (touchDown [x y pointer button] true)
+    (touchUp [x y pointer button] true)
+    (touchDragged [x y pointer] true)
+    (mouseMoved [x y] true)
+    (scrolled [amount] true)))
+
 (defn -init-game
   "inits a Game instance"
   [shared-state shared-inputs]
@@ -57,4 +78,5 @@
 
 (defn -create [^Game this]
   ; set up screen, input listener
-  (.setScreen this (make-screen (:state (.state this)))))
+  (.setScreen this (make-screen (:state (.state this))))
+  (.setInputProcessor Gdx/input (make-input-listener (:inputs (.state this)))))
