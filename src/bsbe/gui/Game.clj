@@ -26,7 +26,7 @@
 (defn render
   "renders the game state"
   [stage state]
-  (let [test-text (Label. "123456789-123456789-123456789-123456789-123456789-" @style)]
+  (let [test-text (Label. (str state) @style)]
     (.addActor @stage test-text)))
 
 (defn make-screen
