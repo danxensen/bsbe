@@ -3,8 +3,9 @@
 (defn new-game
   "creates a new game state"
   []
-  {:partial-input []
-   :input ""})
+  {:partial-input [] ; holds the input the player is still typing
+   :input "" ; holds the input after player hits enter
+   })
 
 (defn get-inputs
   "gets the new inputs"
@@ -38,7 +39,11 @@
 (defn process-state
   "transforms the game state based on previous state and inputs"
   [state inputs]
-  (process-inputs state inputs))
+  (let [state (process-inputs state inputs)
+        input-available (not (empty? (:input state)))]
+    (if input-available
+      (process-command state)
+      state)))
 
 (defn continue?
   "determines if the game should continue running"
