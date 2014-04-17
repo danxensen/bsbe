@@ -37,6 +37,7 @@
     ; make a new id for the command, and return the rules and actions
     `{:id (gensym) :rules ~(vec rules) :actions ~(vec actions)}))
 
+; (make-commands [["this" | :that] "actions" (to take)]
 (defmacro make-commands
   "defines commands - rules for matching, and actions to take"
   [& commands]
@@ -47,11 +48,13 @@
   [[name rules]]
   `[~name '~(parse-rules rules)])
 
+; (make-command-dictionary [:key ["this" | :that]])
 (defmacro make-command-dictionary
   "defines the dictionary used by the game commands"
   [& dictionary-entries]
   (into {} (map parse-dictionary-entry dictionary-entries)))
 
+; (defentity thing (make-commands) state)
 (defmacro defentity
   "defines an entity"
   ([name commands]
@@ -60,6 +63,7 @@
      `(defn ~name []
         {:id (keyword '~name) :commands ~commands :state ~state})))
 
+; (defarea place "description" [entities] (make-commands) state)
 (defmacro defarea
   "defines an area"
   ([name description entities commands]
