@@ -1,4 +1,5 @@
-(ns bsbe.game.command)
+(ns bsbe.game.command
+  (:refer bsbe.game.actions))
 
 ; commands are usually of the form
 ;   verb
@@ -17,7 +18,8 @@
   "parses the right-hand side of a command grammar rule"
   [rules]
   (let [rules (partition-by #(= '| %) rules)
-        rules (filter #(not= '(|) %) rules)]
+        rules (filter #(not= '(|) %) rules)
+        rules (map vec rules)]
     rules))
 
 (defn convert-action
@@ -33,7 +35,7 @@
   (let [rules (parse-rules rules)
         actions (map convert-action actions)]
     ; make a new id for the command, and return the rules and actions
-    `{:id (gensym) :rules '~rules :actions '~actions}))
+    `{:id (gensym) :rules ~(vec rules) :actions ~(vec actions)}))
 
 (defmacro make-commands
   "defines commands - rules for matching, and actions to take"
@@ -49,3 +51,20 @@
   "defines the dictionary used by the game commands"
   [& dictionary-entries]
   (into {} (map parse-dictionary-entry dictionary-entries)))
+
+(defmacro defentity
+  "defines an entity"
+  ([name commands]
+     `(defentity ~name ~commands {}))
+  ([name commands state]
+     `(defn ~name []
+        {:id (keyword '~name) :commands ~commands :state ~state})))
+
+(defmacro defarea
+  "defines an area"
+  ([name description entities commands]
+     `(defarea ~name ~description ~entities ~commands {}))
+  ([name description entities commands state]
+     (let [entities (map eval entities)]
+       `(defn ~name []
+          {:id (keyword '~name) :description ~description :entities ~entities :commands ~commands :state ~state}))))
