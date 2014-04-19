@@ -1,5 +1,5 @@
 (ns bsbe.game.command
-  (:refer bsbe.game.actions))
+  (:use bsbe.game.actions))
 
 ; commands are usually of the form
 ;   verb
@@ -74,7 +74,8 @@
   ([name description entities commands]
      `(defarea ~name ~description ~entities ~commands {}))
   ([name description entities commands state]
-     (let [entities (map eval entities)]
+     ; evaluate the entity fns to create the entity list
+     (let [entities (vec (map list entities))]
        `(defn ~name []
           {:id (keyword '~name) :description ~description :entities ~entities :commands ~commands :state ~state}))))
 
@@ -132,6 +133,41 @@
   "finds the best matching command for an input"
   [inputs commands]
   (let [symbols (keys commands) ; check each symbol in commands
-        ; find the first that matches the input
+        ; find the first that matches the input (or nil if none)
         match (first (filter #(match-command inputs % commands) symbols))]
     match))
+
+(defn entities->commands
+  "extracts and combines the commands from a collection of entities"
+  [entities]
+  (let [commands (map :commands entities)
+        commands (reduce concat commands)]
+    commands))
+
+(defn process-command
+  "finds the command for the given input and executes it"
+  [{:keys [input areas location inventory dictionary] :as state}]
+  (let [; split the "input string" by spaces, and use lower case
+        inputs (clojure.string/split (clojure.string/lower-case input) #"\s")
+        current-area (get areas location)
+        match #(find-best-match inputs
+                                (merge dictionary
+                                       (commands->dictionary %)))
+        find-match (fn [commands] (first (filter #(= (:id %) (match commands))
+                                                commands)))
+        process #(let [command (find-match %)
+                       actions (:actions command)
+                       action (apply comp actions)]
+                   action)
+        found-process (or ; use or to stop at the first match
+                       ; check entities at current-area
+                       (process (entities->commands (:entities current-area)))
+                       ; check inventory
+                       (process (entities->commands (:inventory state)))
+                       ; check current-area
+                       (process (:commands current-area))
+                       ; check state
+                       (process (:commands state)))
+        ; empty out the input now that it is processed
+        state (assoc-in state [:input] "")]
+    (found-process state)))
