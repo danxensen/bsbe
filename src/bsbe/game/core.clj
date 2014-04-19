@@ -16,6 +16,8 @@
    :location :hotelroom ; the current area id
    :inventory {} ; player's inventory of entities
    :dictionary (make-dictionary) ; dictionary shared throughout game
+   :unknown-command (fn [state]
+                      (assoc-in state [:message] (str "You don't think you can " (:input state) ", maybe you didn't form that idea properly?")))
    })
 
 (defn get-inputs
@@ -39,9 +41,9 @@
             ; backspace: take out the last input
             \backspace (update-in state [:partial-input] (comp vec butlast))
             ; enter: move partial-input to input so it can be processed
-            \newline (-> state
-                         (assoc-in [:input] (apply str partial-input))
-                         (assoc-in [:partial-input] []))
+            \return (-> state
+                        (assoc-in [:input] (apply str partial-input))
+                        (assoc-in [:partial-input] []))
             ; otherwise: add input to partial-input
             (update-in state [:partial-input] conj input))]
       ; process rest of the inputs

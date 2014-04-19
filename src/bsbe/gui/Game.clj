@@ -44,7 +44,7 @@
   "wraps the message to fit the screen"
   [message stage]
   (loop [message message
-         line-number 0]
+         line-number 1] ; start 1 line under the top
     (let [[line rest] (split-at max-line-length message)
           [line rest] (adjust-for-split-word line rest)
           line-label (Label. (apply str line) @style)]
@@ -56,7 +56,7 @@
 (defn render
   "renders the game state"
   [stage state]
-  (let [partial-input (Label. (apply str (:partial-input state)) @style)
+  (let [partial-input (Label. (apply str ">" (:partial-input state)) @style)
         message (:animated-message state)]
     (.addActor @stage partial-input)
     (format-message message stage)))
@@ -85,10 +85,7 @@
   "makes a listener for input events"
   [inputs]
   (proxy [InputProcessor] []
-    (keyDown [keycode]
-      (when (= keycode Input$Keys/ENTER)
-        (swap! inputs #(conj % \newline)))
-      true)
+    (keyDown [keycode] true)
     (keyUp [keycode] true)
     (keyTyped [character]
       (swap! inputs #(conj % character))

@@ -126,7 +126,7 @@
 
 (defn process-command
   "finds the command for the given input and executes it"
-  [{:keys [input areas location inventory dictionary] :as state}]
+  [{:keys [input areas location inventory dictionary unknown-command] :as state}]
   (let [; split the "input string" by spaces, and use lower case
         inputs (clojure.string/split (clojure.string/lower-case input) #"\s")
         current-area (get areas location)
@@ -138,7 +138,9 @@
         process #(let [command (find-match %)
                        actions (:actions command)
                        action (apply comp actions)]
-                   action)
+                   (if (nil? actions)
+                     nil
+                     action))
         found-process (or ; use or to stop at the first match
                        ; check entities at current-area
                        (process (entities->commands (:entities current-area)))
@@ -147,7 +149,11 @@
                        ; check current-area
                        (process (:commands current-area))
                        ; check state
-                       (process (:commands state)))
+                       (process (:commands state))
+                       ; or no matching command found
+                       unknown-command)
+        ; apply process to state
+        state (found-process state)
         ; empty out the input now that it is processed
         state (assoc-in state [:input] "")]
-    (found-process state)))
+    state))
