@@ -9,10 +9,28 @@
   [text]
   (fn [state] (update-in state [:message] str text " ")))
 
-(defn flag
-  "sets a flag or other data variable in the game"
+(defn set-entity-state
+  "sets a state value associated with a particular entity"
+  ([area entity key value]
+     (if (= area :inventory)
+       (fn [state]
+         (assoc-in state [:inventory entity :state key] value))
+       (fn [state]
+         (assoc-in state [:areas area :entities entity :state key] value))))
+  ([entity key value]
+     (set-entity-state (current-area) entity key value)))
+
+(defn set-area-state
+  "sets a state value associated with a particular area"
+  [area key value]
+  (fn [state]
+    (assoc-in state [:areas area :state key] value)))
+
+(defn set-game-state
+  "sets a state value associated with the entire game"
   [key value]
-  (fn [state] (assoc-in state [:flags key] value)))
+  (fn [state]
+    (assoc-in state [:state key] value)))
 
 ; action conditions - usable inside commands to check the state
 ; use var *state*, which is bound during command processing
@@ -58,3 +76,22 @@
                        (assoc-in state [:inventory id] entity)
                        (assoc-in state [:areas to :entities id]))]
     entity-moved))
+
+(defn get-entity-state
+  "gets a state value associated with a particular entity"
+  ([area entity key]
+     (if (= area :inventory)
+       (get-in *state* [:inventory entity :state key])
+       (get-in *state* [:areas area :entities entity :state key])))
+  ([entity key]
+     (get-entity-state (current-area) entity key)))
+
+(defn get-area-state
+  "gets a state value associated with a particular area"
+  [area key]
+  (get-in *state* [:areas area :state key]))
+
+(defn get-game-state
+  "gets a staet value associated with the game"
+  [key]
+  (get-in *state* [:state key]))
