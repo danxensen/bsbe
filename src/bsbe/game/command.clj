@@ -22,26 +22,18 @@
         rules (map vec rules)]
     rules))
 
-(defn convert-action
-  "ensures action is converted to appropriate format"
-  [action]
-  (if (string? action)
-    `(bsbe.game.actions/message ~action)
-    action))
-
 (defn parse-command
   "parses an entire command definition"
   [rules & actions]
-  (let [rules (parse-rules rules)
-        actions (map convert-action actions)]
+  (let [rules (parse-rules rules)]
     ; make a new id for the command, and return the rules and actions
-    `{:id (keyword (gensym)) :rules ~(vec rules) :actions ~(vec actions)}))
+    `{:id (keyword (gensym)) :rules ~(vec rules) :actions '~(vec actions)}))
 
-; (make-commands [["this" | :that] "actions" (to take)]
+; (make-commands [["this" | :that] "actions" (when (condition) (more actions))])
 (defmacro make-commands
   "defines commands - rules for matching, and actions to take"
   [& commands]
-  (vec (map #(apply parse-command %) commands)))
+  (vec (map #(apply parse-command %) `~commands)))
 
 (defn commands->dictionary
   "extracts dictionary entries from commands"
@@ -102,8 +94,8 @@
         (let [[inputs symbols] (first inputs-symbols) ; get first pair
               parsed (parse-command-grammar inputs symbols commands)] ; parse it
           (cond
-           ; if seq, still more pairs to parse
-           (seq? parsed) (recur (concat (rest inputs-symbols) parsed))
+           ; if coll, still more pairs to parse
+           (coll? parsed) (recur (concat (rest inputs-symbols) parsed))
            ; if parsed, found match
            parsed true
            ; else no match this branch, continue checking other pairs
@@ -124,20 +116,48 @@
         commands (reduce concat commands)]
     commands))
 
+(defn convert-action
+  "ensures action is converted to appropriate format"
+  [action]
+  (if (string? action)
+    (message action)
+    action))
+
+(defn parse-actions
+  "parses actions into a single state->state fn"
+  [state actions]
+  (binding [; bind *state*, used by the action conditions
+            *state* state
+            ; bind *ns*, because command action fns won't hold their ns
+            *ns* (create-ns 'bsbe.game.actions)]
+    (let [; eval actions and convert any that need it
+          parse (comp convert-action eval)
+          parsed-actions (map parse actions)
+          parsed-actions (filter (comp not nil?) parsed-actions)
+          parsed-actions (reverse parsed-actions) ; reverse before comping
+          ; reduce actions into a single state->state action
+          action (apply comp parsed-actions)]
+      action)))
+
 (defn process-command
   "finds the command for the given input and executes it"
   [{:keys [input areas location inventory dictionary unknown-command] :as state}]
   (let [; split the "input string" by spaces, and use lower case
         inputs (clojure.string/split (clojure.string/lower-case input) #"\s")
         current-area (get areas location)
+        ; match - commands -> id that matches input, or nil
         match #(find-best-match inputs
+                                ; combine command rules and dictionary
                                 (merge dictionary
                                        (commands->dictionary %)))
+        ; find-match - commands -> command that matches input, or nil
         find-match (fn [commands] (first (filter #(= (:id %) (match commands))
                                                 commands)))
+        ; process - commands -> actions that match input, or nil
         process #(let [command (find-match %)
                        actions (:actions command)
-                       action (apply comp actions)]
+                       action (parse-actions state actions)]
+                   ; if actions nil, comp nil returns identity - use nil
                    (if (nil? actions)
                      nil
                      action))
