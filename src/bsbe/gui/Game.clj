@@ -4,24 +4,11 @@
               :state state
               :init init-game
               :constructors {[clojure.lang.Atom clojure.lang.Atom] []})
-  (:import [com.badlogic.gdx Game Gdx Screen InputProcessor Input$Keys]
-           [com.badlogic.gdx.graphics GL20 Color]
-           [com.badlogic.gdx.graphics.g2d BitmapFont]
-           [com.badlogic.gdx.scenes.scene2d Stage]
-           [com.badlogic.gdx.scenes.scene2d.ui Label Label$LabelStyle]
-           [com.badlogic.gdx.backends.lwjgl LwjglFiles]))
-
-(def style
-  (delay ; delay because creating LabelStyle at compile time fails
-   (Label$LabelStyle.
-    (BitmapFont. (.internal (LwjglFiles.) "unifont-32.fnt") false)
-    (Color. 1 1 1 1))))
-
-(def max-line-length 48)
-
-(def line-pixel-height 32)
-
-(def first-line-y 448)
+  (:import [com.badlogic.gdx Game Gdx Screen InputProcessor]
+           [com.badlogic.gdx.graphics GL20]
+           [com.badlogic.gdx.scenes.scene2d Stage])
+  (:require [bsbe.gui.uis [title :as title]
+                          [game :as game]]))
 
 (defn clear-screen
   "clears the screen"
@@ -29,41 +16,15 @@
   (.glClearColor (Gdx/gl) 0 0 0 0)
   (.glClear (Gdx/gl) GL20/GL_COLOR_BUFFER_BIT))
 
-(defn adjust-for-split-word
-  "adjusts a split-at result so that a word isn't split across the boundary"
-  [line rest]
-  (if (empty? rest)
-    [line rest]
-    (let [line-length (count line)
-          line-last-space (.lastIndexOf line \space) ; break at last space
-          [new-line pre-rest] (split-at (inc line-last-space) line)
-          new-rest (concat pre-rest rest)] ; slap leftovers onto rest
-      [new-line new-rest])))
-
-(defn format-message
-  "wraps the message to fit the screen"
-  [message stage]
-  (loop [message message
-         line-number 1] ; start 1 line under the top
-    (let [[line rest] (split-at max-line-length message)
-          [line rest] (adjust-for-split-word line rest)
-          line-label (Label. (apply str line) @style)]
-      (.setY line-label (- first-line-y (* line-number line-pixel-height)))
-      (.addActor @stage line-label)
-      (when-not (empty? rest)
-        (recur rest (inc line-number))))))
-
 (defn render
-  "renders the game state"
-  [stage state]
-  (let [partial-input (Label. (apply str ">" (:partial-input state)) @style)
-        message (:animated-message state)]
-    (.addActor @stage partial-input)
-    (format-message message stage)))
+  "renders the current ui"
+  [stage {:keys [current-ui] :as state} uis]
+  ; get the current ui and render it
+  ((get uis current-ui) stage state))
 
 (defn make-screen
   "creates the screen for displaying stuff"
-  [state]
+  [state uis]
   (let [stage (atom nil)]
     (proxy [Screen] []
       (resize [w h])
@@ -73,7 +34,7 @@
         (clear-screen)
         (reset! stage (Stage.))
         ; render the game state
-        (render stage @state)
+        (render stage @state uis)
         (doto @stage
           (.act delta)
           (.draw)))
@@ -101,9 +62,12 @@
   [shared-state shared-inputs]
   ; pass nothing to Game constructor; shared data to state
   [[] {:state shared-state
-       :inputs shared-inputs}])
+       :inputs shared-inputs
+       :uis {:title title/render
+             :game game/render}}])
 
 (defn -create [^Game this]
   ; set up screen, input listener
-  (.setScreen this (make-screen (:state (.state this))))
-  (.setInputProcessor Gdx/input (make-input-listener (:inputs (.state this)))))
+  (let [state (.state this)]
+    (.setScreen this (make-screen (:state state) (:uis state)))
+    (.setInputProcessor Gdx/input (make-input-listener (:inputs state)))))

@@ -4,6 +4,8 @@
 ; they are used to easily effect changes on the game state
 ; they return functions of type state -> state
 
+(declare current-area)
+
 (defn message
   "appends to the next message in the game"
   [text]
