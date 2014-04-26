@@ -77,7 +77,7 @@
      ; success - both inputs and symbols empty
      (and no-inputs no-symbols) true
      ; nil/empty - just drop the nil symbol and continue
-     (= top-symbol nil) [[inputs (rest symbols)]]
+     (and (not no-symbols) (= top-symbol nil)) [[inputs (rest symbols)]]
      ; match - input and symbol are equal
      (= top-input top-symbol) [[(rest inputs) (rest symbols)]]
      ; expand - non-terminal symbol, get its expansions
@@ -142,7 +142,9 @@
 (defn process-command
   "finds the command for the given input and executes it"
   [{:keys [input areas location inventory dictionary unknown-command] :as state}]
-  (let [; split the "input string" by spaces, and use lower case
+  (let [; reset the message before processing
+        state (assoc-in state [:message] "")
+        ; split the "input string" by spaces, and use lower case
         inputs (clojure.string/split (clojure.string/lower-case input) #"\s")
         current-area (get areas location)
         ; match - commands -> id that matches input, or nil
